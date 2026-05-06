@@ -9,3 +9,17 @@ Also in ChessModel.java, add logic to each of the pieces, pawns can move one spa
 
 Prompt:
 Fill in ChessView.java. It should take a reference to the model and draw everything the players see: the 8x8 board with alternating light green and a darker green, both sets of pieces (white and black). Show a centered game-over message when the game ends. The view should only read from the model - it must never change the game state.
+
+Prompt:
+Fill in ChessController.java. Add mouse controls so the player can move an available piece with Left mouse button and add the ability to draw temporary arrows with right mouse button that are removed once a player makes a move.
+
+Prompt:
+In ChessModel.java. Implement the ability to castle. Make sure the player can only do this if there are no pieces between the king and the rook its trying to castle with as well as ensure the king and the rook that is a part of the castle have not moved before the castle.
+
+Prompt:
+In ChessModel.java. Update the game logic to detect when a king is in check. Only allow the player in check to make a move the prevents the check. If no move exists end the game due to checkmate.
+
+Prompt:
+In ChessModel.java. Implement promotion when a pawn reaches the other side of the board. Allow the player to pick between knight, bishop, rook, or queen.
+
+Prompt:

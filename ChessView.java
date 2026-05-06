@@ -5,6 +5,8 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * ChessView is responsible for rendering the chess game visually.
@@ -16,12 +18,72 @@ public class ChessView extends JPanel {
     private final ChessModel model;
 
     // Classic chess board colors
-    private static final Color LIGHT_SQUARE = new Color(238, 238, 210);
+    private static final Color LIGHT_SQUARE = new Color(215, 220, 190);
     private static final Color DARK_SQUARE = new Color(118, 150, 86);
+
+    // UI state that does not belong in the model
+    private int selectedRow = -1;
+    private int selectedCol = -1;
+
+    public static class Arrow {
+        int startRow, startCol, endRow, endCol;
+        public Arrow(int startRow, int startCol, int endRow, int endCol) {
+            this.startRow = startRow;
+            this.startCol = startCol;
+            this.endRow = endRow;
+            this.endCol = endCol;
+        }
+    }
+    
+    private final List<Arrow> arrows = new ArrayList<>();
+    private Arrow inProgressArrow = null;
 
     public ChessView(ChessModel model) {
         this.model = model;
-        // The controller will add mouse listeners to this panel.
+    }
+
+    public void setSelectedSquare(int row, int col) {
+        this.selectedRow = row;
+        this.selectedCol = col;
+    }
+
+    public void addArrow(int startRow, int startCol, int endRow, int endCol) {
+        arrows.add(new Arrow(startRow, startCol, endRow, endCol));
+    }
+
+    public void setInProgressArrow(int startRow, int startCol, int endRow, int endCol) {
+        if (startRow == -1) {
+            inProgressArrow = null;
+        } else {
+            inProgressArrow = new Arrow(startRow, startCol, endRow, endCol);
+        }
+    }
+
+    public void clearArrows() {
+        arrows.clear();
+        inProgressArrow = null;
+    }
+
+    /**
+     * Returns the [row, col] on the board for a given pixel coordinate, 
+     * or null if the click was outside the 8x8 grid.
+     */
+    public int[] getSquareFromCoordinates(int x, int y) {
+        int width = getWidth();
+        int height = getHeight();
+        int boardSize = Math.min(width, height);
+        int squareSize = boardSize / 8;
+
+        int offsetX = (width - boardSize) / 2;
+        int offsetY = (height - boardSize) / 2;
+
+        if (x < offsetX || x >= offsetX + boardSize || y < offsetY || y >= offsetY + boardSize) {
+            return null; // Clicked outside the board
+        }
+
+        int col = (x - offsetX) / squareSize;
+        int row = (y - offsetY) / squareSize;
+        return new int[]{row, col};
     }
 
     @Override
@@ -57,6 +119,12 @@ public class ChessView extends JPanel {
                 int y = offsetY + row * squareSize;
                 g2d.fillRect(x, y, squareSize, squareSize);
 
+                // Highlight selected square
+                if (row == selectedRow && col == selectedCol) {
+                    g2d.setColor(new Color(255, 255, 0, 100)); // Yellow with transparency
+                    g2d.fillRect(x, y, squareSize, squareSize);
+                }
+
                 // Read piece from model and draw it
                 ChessModel.Piece piece = model.getPiece(row, col);
                 if (piece != null) {
@@ -65,10 +133,59 @@ public class ChessView extends JPanel {
             }
         }
 
+        // Draw committed arrows
+        for (Arrow arrow : arrows) {
+            drawArrow(g2d, arrow, squareSize, offsetX, offsetY);
+        }
+
+        // Draw in-progress drag arrow
+        if (inProgressArrow != null) {
+            drawArrow(g2d, inProgressArrow, squareSize, offsetX, offsetY);
+        }
+
         // Draw Game Over message if the game is over
         if (model.isGameOver()) {
             drawGameOver(g2d, width, height);
         }
+    }
+
+    private void drawArrow(Graphics2D g2d, Arrow arrow, int squareSize, int offsetX, int offsetY) {
+        g2d.setColor(new Color(255, 170, 0, 180)); // Orange-ish with transparency
+        
+        int startX = offsetX + arrow.startCol * squareSize + squareSize / 2;
+        int startY = offsetY + arrow.startRow * squareSize + squareSize / 2;
+        int endX = offsetX + arrow.endCol * squareSize + squareSize / 2;
+        int endY = offsetY + arrow.endRow * squareSize + squareSize / 2;
+
+        // If dragging in the same square, don't draw an arrow
+        if (startX == endX && startY == endY) return;
+
+        double angle = Math.atan2(endY - startY, endX - startX);
+        
+        int arrowHeadLength = squareSize / 3;
+        
+        // Draw main line using a thick stroke
+        g2d.setStroke(new java.awt.BasicStroke(squareSize / 8f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+        
+        // Shorten the line so it doesn't poke through the arrowhead
+        int lineEndX = endX - (int) (Math.cos(angle) * arrowHeadLength);
+        int lineEndY = endY - (int) (Math.sin(angle) * arrowHeadLength);
+        g2d.drawLine(startX, startY, lineEndX, lineEndY);
+
+        // Draw arrowhead (Polygon)
+        int[] xPoints = {
+            endX,
+            endX - (int) (Math.cos(angle - Math.PI / 6) * arrowHeadLength),
+            endX - (int) (Math.cos(angle + Math.PI / 6) * arrowHeadLength)
+        };
+        int[] yPoints = {
+            endY,
+            endY - (int) (Math.sin(angle - Math.PI / 6) * arrowHeadLength),
+            endY - (int) (Math.sin(angle + Math.PI / 6) * arrowHeadLength)
+        };
+        g2d.fillPolygon(xPoints, yPoints, 3);
+        
+        g2d.setStroke(new java.awt.BasicStroke()); // Reset stroke
     }
 
     private void drawPiece(Graphics2D g2d, ChessModel.Piece piece, int x, int y, int size) {

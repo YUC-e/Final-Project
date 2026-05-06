@@ -114,9 +114,20 @@ public class ChessModel {
     }
 
     /**
-     * Checks if a move is valid based on the rules for the specific piece.
+     * Checks if a move is completely valid (follows piece rules AND doesn't leave King in check).
      */
     public boolean isValidMove(int startRow, int startCol, int endRow, int endCol) {
+        if (!isPseudoLegalMove(startRow, startCol, endRow, endCol)) {
+            return false;
+        }
+        return !wouldMoveLeaveKingInCheck(startRow, startCol, endRow, endCol);
+    }
+
+    /**
+     * Checks if a move follows the fundamental movement rules for the specific piece.
+     * It does not consider if the move leaves the King in check.
+     */
+    private boolean isPseudoLegalMove(int startRow, int startCol, int endRow, int endCol) {
         // Bounds checking
         if (startRow < 0 || startRow >= 8 || startCol < 0 || startCol >= 8 ||
             endRow < 0 || endRow >= 8 || endCol < 0 || endCol >= 8) {
@@ -188,9 +199,96 @@ public class ChessModel {
                        isPathClear(startRow, startCol, endRow, endCol);
 
             case KING:
-                // Basic 1-square move. Castling not implemented yet.
-                return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
+                // Basic 1-square move.
+                if (Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1) {
+                    return true;
+                }
+                
+                // Castling
+                if (!piece.hasMoved() && rowDiff == 0 && Math.abs(colDiff) == 2) {
+                    // Cannot castle out of check
+                    if (isInCheck(piece.getColor())) return false;
 
+                    // Kingside castling
+                    if (colDiff == 2) {
+                        Piece rook = board[startRow][7];
+                        if (rook != null && rook.getType() == PieceType.ROOK && !rook.hasMoved()) {
+                            // Check that the spaces between king and rook are empty
+                            if (board[startRow][5] == null && board[startRow][6] == null) {
+                                PlayerColor oppColor = (piece.getColor() == PlayerColor.WHITE) ? PlayerColor.BLACK : PlayerColor.WHITE;
+                                // Cannot castle through or into check
+                                if (!isSquareAttacked(startRow, 5, oppColor) && !isSquareAttacked(startRow, 6, oppColor)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    // Queenside castling
+                    else if (colDiff == -2) {
+                        Piece rook = board[startRow][0];
+                        if (rook != null && rook.getType() == PieceType.ROOK && !rook.hasMoved()) {
+                            // Check that the spaces between king and rook are empty
+                            if (board[startRow][1] == null && board[startRow][2] == null && board[startRow][3] == null) {
+                                PlayerColor oppColor = (piece.getColor() == PlayerColor.WHITE) ? PlayerColor.BLACK : PlayerColor.WHITE;
+                                // Cannot castle through or into check
+                                if (!isSquareAttacked(startRow, 2, oppColor) && !isSquareAttacked(startRow, 3, oppColor)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                return false;
+
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Determines if a specific square is fundamentally threatened by a piece of the attacking color.
+     * Ignores whose turn it currently is and complex moves (castling, etc.).
+     */
+    private boolean isSquareAttacked(int targetRow, int targetCol, PlayerColor attackingColor) {
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece attacker = board[r][c];
+                if (attacker != null && attacker.getColor() == attackingColor) {
+                    if (canPieceAttack(attacker, r, c, targetRow, targetCol)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Basic collision and trajectory calculation to see if a piece threatens a square.
+     */
+    private boolean canPieceAttack(Piece piece, int startRow, int startCol, int endRow, int endCol) {
+        int rowDiff = endRow - startRow;
+        int colDiff = endCol - startCol;
+
+        if (rowDiff == 0 && colDiff == 0) return false;
+
+        switch (piece.getType()) {
+            case PAWN:
+                int dir = (piece.getColor() == PlayerColor.WHITE) ? -1 : 1;
+                // Pawns only attack diagonally
+                return Math.abs(colDiff) == 1 && rowDiff == dir;
+            case ROOK:
+                return (rowDiff == 0 || colDiff == 0) && isPathClear(startRow, startCol, endRow, endCol);
+            case KNIGHT:
+                return (Math.abs(rowDiff) == 2 && Math.abs(colDiff) == 1) ||
+                       (Math.abs(rowDiff) == 1 && Math.abs(colDiff) == 2);
+            case BISHOP:
+                return Math.abs(rowDiff) == Math.abs(colDiff) && isPathClear(startRow, startCol, endRow, endCol);
+            case QUEEN:
+                return (rowDiff == 0 || colDiff == 0 || Math.abs(rowDiff) == Math.abs(colDiff)) && 
+                       isPathClear(startRow, startCol, endRow, endCol);
+            case KING:
+                return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
             default:
                 return false;
         }
@@ -217,10 +315,88 @@ public class ChessModel {
     }
 
     /**
+     * Returns true if the King of the specified color is currently under attack.
+     */
+    public boolean isInCheck(PlayerColor color) {
+        PlayerColor opponentColor = (color == PlayerColor.WHITE) ? PlayerColor.BLACK : PlayerColor.WHITE;
+        
+        // Find the king
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece piece = board[r][c];
+                if (piece != null && piece.getColor() == color && piece.getType() == PieceType.KING) {
+                    return isSquareAttacked(r, c, opponentColor);
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Temporarily applies a move to the board and checks if it results in the current player's King being in check.
+     */
+    private boolean wouldMoveLeaveKingInCheck(int startRow, int startCol, int endRow, int endCol) {
+        Piece pieceToMove = board[startRow][startCol];
+        Piece targetPiece = board[endRow][endCol];
+        
+        // Temporarily apply move
+        board[endRow][endCol] = pieceToMove;
+        board[startRow][startCol] = null;
+        
+        // Handle temporary en passant capture removal
+        Piece capturedEnPassant = null;
+        int epRow = startRow;
+        int epCol = endCol;
+        if (pieceToMove.getType() == PieceType.PAWN && Math.abs(startCol - endCol) == 1 && targetPiece == null) {
+            capturedEnPassant = board[epRow][epCol];
+            board[epRow][epCol] = null;
+        }
+
+        // Check if the current player's king is in check after the simulation
+        boolean inCheck = isInCheck(pieceToMove.getColor());
+
+        // Revert move
+        board[startRow][startCol] = pieceToMove;
+        board[endRow][endCol] = targetPiece;
+        if (capturedEnPassant != null) {
+            board[epRow][epCol] = capturedEnPassant;
+        }
+
+        return inCheck;
+    }
+
+    /**
+     * Scans the board to determine if the given player has ANY valid moves left.
+     */
+    private boolean hasAnyValidMoves(PlayerColor color) {
+        for (int startRow = 0; startRow < 8; startRow++) {
+            for (int startCol = 0; startCol < 8; startCol++) {
+                Piece piece = board[startRow][startCol];
+                // Try every move for every piece of that color
+                if (piece != null && piece.getColor() == color) {
+                    for (int endRow = 0; endRow < 8; endRow++) {
+                        for (int endCol = 0; endCol < 8; endCol++) {
+                            // If we find even one valid move, return true
+                            if (isValidMove(startRow, startCol, endRow, endCol)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Executes the move if valid, handles captures, and switches turn.
      * Returns true if the move was successfully made.
      */
     public boolean movePiece(int startRow, int startCol, int endRow, int endCol) {
+        return movePiece(startRow, startCol, endRow, endCol, null);
+    }
+
+    public boolean movePiece(int startRow, int startCol, int endRow, int endCol, PieceType promotion) {
         if (!isValidMove(startRow, startCol, endRow, endCol)) {
             return false;
         }
@@ -232,16 +408,45 @@ public class ChessModel {
             board[startRow][endCol] = null; // Remove the captured pawn which is on the start row
         }
 
+        // Handle Castling Rook move
+        if (piece.getType() == PieceType.KING && Math.abs(startCol - endCol) == 2) {
+            if (endCol > startCol) {
+                // Kingside: move rook from 7 to 5
+                Piece rook = board[startRow][7];
+                board[startRow][5] = rook;
+                board[startRow][7] = null;
+                if (rook != null) rook.setHasMoved(true);
+            } else {
+                // Queenside: move rook from 0 to 3
+                Piece rook = board[startRow][0];
+                board[startRow][3] = rook;
+                board[startRow][0] = null;
+                if (rook != null) rook.setHasMoved(true);
+            }
+        }
+
         // Apply move
         board[endRow][endCol] = piece;
         board[startRow][startCol] = null;
         piece.setHasMoved(true);
+
+        // Handle Promotion
+        if (promotion != null && piece.getType() == PieceType.PAWN && (endRow == 0 || endRow == 7)) {
+            board[endRow][endCol] = new Piece(promotion, piece.getColor());
+            board[endRow][endCol].setHasMoved(true);
+        }
 
         // Record this move for en passant validation next turn
         lastMove = new Move(startRow, startCol, endRow, endCol, piece);
 
         // Advance turn
         switchTurn();
+
+        // Check for Game Over (Checkmate or Stalemate)
+        if (!hasAnyValidMoves(currentTurn)) {
+            setGameOver(true);
+        }
+
         return true;
     }
 
