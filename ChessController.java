@@ -24,7 +24,7 @@ public class ChessController {
         SwingUtilities.invokeLater(() -> {
             // Instantiate the components
             ChessModel model = new ChessModel();
-            ChessView view = new ChessView();
+            ChessView view = new ChessView(model);
             ChessController controller = new ChessController(model, view);
 
             // Setup the main window (JFrame)
