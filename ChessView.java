@@ -130,6 +130,28 @@ public class ChessView extends JPanel {
                 if (piece != null) {
                     drawPiece(g2d, piece, x, y, squareSize);
                 }
+
+                // Draw valid move indicators
+                if (selectedRow != -1 && selectedCol != -1) {
+                    if (model.isValidMove(selectedRow, selectedCol, row, col)) {
+                        g2d.setColor(new Color(0, 0, 0, 60)); // Semi-transparent grey
+                        if (piece == null) {
+                            // Empty square -> small solid circle
+                            int circleRadius = squareSize / 6;
+                            int centerX = x + squareSize / 2;
+                            int centerY = y + squareSize / 2;
+                            g2d.fillOval(centerX - circleRadius, centerY - circleRadius, circleRadius * 2, circleRadius * 2);
+                        } else {
+                            // Capture -> hollow ring
+                            int ringRadius = squareSize * 3 / 8; // slightly smaller than square half
+                            int centerX = x + squareSize / 2;
+                            int centerY = y + squareSize / 2;
+                            g2d.setStroke(new java.awt.BasicStroke(squareSize / 12f));
+                            g2d.drawOval(centerX - ringRadius, centerY - ringRadius, ringRadius * 2, ringRadius * 2);
+                            g2d.setStroke(new java.awt.BasicStroke()); // reset stroke
+                        }
+                    }
+                }
             }
         }
 

@@ -23,3 +23,6 @@ Prompt:
 In ChessModel.java. Implement promotion when a pawn reaches the other side of the board. Allow the player to pick between knight, bishop, rook, or queen.
 
 Prompt:
+In ChessView.java. Add the ability to see valid moves by creating grey, slightly transparent circles denoting valid moves when a player highlights a piece to move.
+
+Prompt:
