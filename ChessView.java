@@ -125,6 +125,29 @@ public class ChessView extends JPanel {
                     g2d.fillRect(x, y, squareSize, squareSize);
                 }
 
+                // Draw board coordinates
+                g2d.setFont(new Font("SansSerif", Font.BOLD, squareSize / 5));
+                FontMetrics fmCoords = g2d.getFontMetrics();
+                int padding = Math.max(2, squareSize / 20);
+
+                // Draw numbers (ranks) on the first column (col == 0)
+                if (col == 0) {
+                    String rankText = String.valueOf(8 - row);
+                    g2d.setColor(isLightSquare ? DARK_SQUARE : LIGHT_SQUARE);
+                    int textX = x + padding;
+                    int textY = y + fmCoords.getAscent() + padding - 2; // -2 for visual centering adjustment
+                    g2d.drawString(rankText, textX, textY);
+                }
+
+                // Draw letters (files) on the last row (row == 7)
+                if (row == 7) {
+                    String fileText = String.valueOf((char) ('a' + col));
+                    g2d.setColor(isLightSquare ? DARK_SQUARE : LIGHT_SQUARE);
+                    int textX = x + squareSize - fmCoords.stringWidth(fileText) - padding;
+                    int textY = y + squareSize - fmCoords.getDescent() - padding + 2;
+                    g2d.drawString(fileText, textX, textY);
+                }
+
                 // Read piece from model and draw it
                 ChessModel.Piece piece = model.getPiece(row, col);
                 

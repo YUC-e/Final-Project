@@ -26,3 +26,6 @@ Prompt:
 In ChessView.java. Add the ability to see valid moves by creating grey, slightly transparent circles denoting valid moves when a player highlights a piece to move.
 
 Prompt:In ChessView.java. Change the square the the king is on to a light red when it is put into check.
+
+Prompt:
+In ChessView.java. Add the ability to see the coordinates of the board, using letters for the columns (a-h) on the bottom right and numbers for the rows (1-8) on the top left.
