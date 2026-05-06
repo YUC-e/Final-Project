@@ -127,6 +127,13 @@ public class ChessView extends JPanel {
 
                 // Read piece from model and draw it
                 ChessModel.Piece piece = model.getPiece(row, col);
+                
+                // Highlight King in check
+                if (piece != null && piece.getType() == ChessModel.PieceType.KING && model.isInCheck(piece.getColor())) {
+                    g2d.setColor(new Color(255, 0, 0, 150)); // Semi-transparent red
+                    g2d.fillRect(x, y, squareSize, squareSize);
+                }
+                
                 if (piece != null) {
                     drawPiece(g2d, piece, x, y, squareSize);
                 }

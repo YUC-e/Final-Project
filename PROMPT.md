@@ -25,4 +25,4 @@ In ChessModel.java. Implement promotion when a pawn reaches the other side of th
 Prompt:
 In ChessView.java. Add the ability to see valid moves by creating grey, slightly transparent circles denoting valid moves when a player highlights a piece to move.
 
-Prompt:
+Prompt:In ChessView.java. Change the square the the king is on to a light red when it is put into check.
