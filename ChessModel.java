@@ -1,3 +1,6 @@
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * ChessModel represents the data and rules of the chess game.
  * It stores the state of the chessboard, pieces, whose turn it is,
@@ -58,12 +61,16 @@ public class ChessModel {
     private PlayerColor currentTurn;
     private Move lastMove; // Track the most recent move made on the board
     private boolean isGameOver;
+    private List<Piece> capturedWhitePieces;
+    private List<Piece> capturedBlackPieces;
 
     public ChessModel() {
         board = new Piece[8][8];
         currentTurn = PlayerColor.WHITE;
         lastMove = null;
         isGameOver = false;
+        capturedWhitePieces = new ArrayList<>();
+        capturedBlackPieces = new ArrayList<>();
         initializeBoard();
     }
 
@@ -402,9 +409,27 @@ public class ChessModel {
         }
 
         Piece piece = board[startRow][startCol];
+        Piece targetPiece = board[endRow][endCol];
+        
+        // Handle normal captures
+        if (targetPiece != null) {
+            if (targetPiece.getColor() == PlayerColor.WHITE) {
+                capturedWhitePieces.add(targetPiece);
+            } else {
+                capturedBlackPieces.add(targetPiece);
+            }
+        }
         
         // Handle En Passant capture removal
         if (piece.getType() == PieceType.PAWN && Math.abs(startCol - endCol) == 1 && board[endRow][endCol] == null) {
+            Piece capturedPawn = board[startRow][endCol];
+            if (capturedPawn != null) {
+                if (capturedPawn.getColor() == PlayerColor.WHITE) {
+                    capturedWhitePieces.add(capturedPawn);
+                } else {
+                    capturedBlackPieces.add(capturedPawn);
+                }
+            }
             board[startRow][endCol] = null; // Remove the captured pawn which is on the start row
         }
 
@@ -456,5 +481,13 @@ public class ChessModel {
 
     public void setGameOver(boolean isGameOver) {
         this.isGameOver = isGameOver;
+    }
+
+    public List<Piece> getCapturedWhitePieces() {
+        return capturedWhitePieces;
+    }
+
+    public List<Piece> getCapturedBlackPieces() {
+        return capturedBlackPieces;
     }
 }

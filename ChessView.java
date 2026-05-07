@@ -71,10 +71,12 @@ public class ChessView extends JPanel {
     public int[] getSquareFromCoordinates(int x, int y) {
         int width = getWidth();
         int height = getHeight();
-        int boardSize = Math.min(width, height);
+        int leftPanelWidth = 200;
+        int availableWidth = Math.max(0, width - leftPanelWidth);
+        int boardSize = Math.min(availableWidth, height);
         int squareSize = boardSize / 8;
 
-        int offsetX = (width - boardSize) / 2;
+        int offsetX = leftPanelWidth + (availableWidth - boardSize) / 2;
         int offsetY = (height - boardSize) / 2;
 
         if (x < offsetX || x >= offsetX + boardSize || y < offsetY || y >= offsetY + boardSize) {
@@ -100,13 +102,19 @@ public class ChessView extends JPanel {
 
         int width = getWidth();
         int height = getHeight();
-        // Calculate the size of each square to fit the panel while maintaining a square aspect ratio
-        int boardSize = Math.min(width, height);
+        int leftPanelWidth = 200;
+        int availableWidth = Math.max(0, width - leftPanelWidth);
+
+        // Calculate the size of each square to fit the remaining panel while maintaining a square aspect ratio
+        int boardSize = Math.min(availableWidth, height);
         int squareSize = boardSize / 8;
 
-        // Center the board if the window is not perfectly square
-        int offsetX = (width - boardSize) / 2;
+        // Center the board in the remaining space
+        int offsetX = leftPanelWidth + (availableWidth - boardSize) / 2;
         int offsetY = (height - boardSize) / 2;
+        
+        // Draw Captured Pieces Panel
+        drawCapturedPieces(g2d, leftPanelWidth, height);
 
         // Draw the 8x8 board and pieces
         for (int row = 0; row < 8; row++) {
@@ -271,6 +279,62 @@ public class ChessView extends JPanel {
             case KNIGHT: return "\u265E";
             case PAWN: return "\u265F";
             default: return "";
+        }
+    }
+
+    private void drawCapturedPieces(Graphics2D g2d, int panelWidth, int panelHeight) {
+        // Draw background for the panel
+        g2d.setColor(new Color(40, 40, 40)); // Dark panel background
+        g2d.fillRect(0, 0, panelWidth, panelHeight);
+
+        List<ChessModel.Piece> capturedWhite = new ArrayList<>(model.getCapturedWhitePieces());
+        List<ChessModel.Piece> capturedBlack = new ArrayList<>(model.getCapturedBlackPieces());
+
+        // Sort: Queen(highest enum) -> Pawn(lowest enum)
+        capturedWhite.sort((p1, p2) -> p2.getType().compareTo(p1.getType()));
+        capturedBlack.sort((p1, p2) -> p2.getType().compareTo(p1.getType()));
+
+        int pieceSize = 36; // Fixed size for captured pieces
+        
+        // Draw White captured pieces
+        int startX = 15;
+        int startY = 60;
+        int x = startX;
+        int y = startY;
+
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("SansSerif", Font.BOLD, 18));
+        g2d.drawString("White Pieces", x, y - 30);
+        g2d.setFont(new Font("SansSerif", Font.PLAIN, pieceSize));
+
+        for (ChessModel.Piece p : capturedWhite) {
+            String symbol = getPieceSymbol(p);
+            g2d.drawString(symbol, x, y);
+            x += pieceSize - 5; // Slight overlap for neat grouping
+            if (x + pieceSize > panelWidth) {
+                x = startX;
+                y += pieceSize + 5;
+            }
+        }
+
+        // Draw Black captured pieces
+        x = startX;
+        y = panelHeight / 2 + 60;
+
+        g2d.setColor(Color.WHITE); // label is white
+        g2d.setFont(new Font("SansSerif", Font.BOLD, 18));
+        g2d.drawString("Black Pieces", x, y - 30);
+        g2d.setFont(new Font("SansSerif", Font.PLAIN, pieceSize));
+        g2d.setColor(Color.BLACK); // pieces are black
+        
+        for (ChessModel.Piece p : capturedBlack) {
+            String symbol = getPieceSymbol(p);
+            g2d.drawString(symbol, x, y);
+            x += pieceSize - 5;
+            if (x + pieceSize > panelWidth) {
+                x = startX;
+                y += pieceSize + 5;
+            }
         }
     }
 

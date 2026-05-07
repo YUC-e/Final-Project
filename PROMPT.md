@@ -29,3 +29,9 @@ Prompt:In ChessView.java. Change the square the the king is on to a light red wh
 
 Prompt:
 In ChessView.java. Add the ability to see the coordinates of the board, using letters for the columns (a-h) on the bottom right and numbers for the rows (1-8) on the top left.
+
+Prompt:
+In ChessView.java. Now add the ability to see which pieces have been captured. Draw these pieces on a new rectangle on the left side of the board. Sort each captured piece by type and color. Update the sort each time a piece is captured.
+
+     // I had to follow up this prompt since the AI wanted to shrink the board to make room for the captured pieces panel. I instructed the AI to just increase the size of the window to make room for the captured pieces panel.
+
