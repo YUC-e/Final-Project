@@ -20,6 +20,9 @@ public class ChessController {
     private int rightClickStartRow = -1;
     private int rightClickStartCol = -1;
 
+    private boolean isSinglePlayer = false;
+    private ChessModel.PlayerColor humanColor = ChessModel.PlayerColor.WHITE;
+
     public ChessController(ChessModel model, ChessView view) {
         this.model = model;
         this.view = view;
@@ -92,6 +95,10 @@ public class ChessController {
     }
 
     private void handleLeftClick(int row, int col) {
+        if (isSinglePlayer && model.getCurrentTurn() != humanColor) {
+            return; // Ignore clicks if it's the AI's turn
+        }
+
         if (selectedRow != -1 && selectedCol != -1) {
             // Check if we click the same square to deselect
             if (selectedRow == row && selectedCol == col) {
@@ -144,6 +151,8 @@ public class ChessController {
                 view.setSelectedSquare(-1, -1);
                 view.clearArrows(); // Arrows removed after move
                 view.repaint();
+                
+                checkAndPlayAI();
             } else {
                 // Invalid move or selecting another piece of our color
                 ChessModel.Piece piece = model.getPiece(row, col);
@@ -174,6 +183,67 @@ public class ChessController {
         }
     }
 
+    private void checkAndPlayAI() {
+        if (!isSinglePlayer || model.isGameOver() || model.getCurrentTurn() == humanColor) {
+            return;
+        }
+
+        ChessModel.PlayerColor aiColor = model.getCurrentTurn();
+        
+        javax.swing.SwingWorker<ChessModel.Move, Void> worker = new javax.swing.SwingWorker<ChessModel.Move, Void>() {
+            @Override
+            protected ChessModel.Move doInBackground() throws Exception {
+                // Sleep slightly so the move doesn't feel instantaneous
+                Thread.sleep(100);
+                return model.calculateAIMove(aiColor);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    ChessModel.Move aiMove = get();
+                    if (aiMove != null) {
+                        ChessModel.PieceType promotion = (aiMove.movedPiece.getType() == ChessModel.PieceType.PAWN && (aiMove.endRow == 0 || aiMove.endRow == 7)) ? ChessModel.PieceType.QUEEN : null;
+                        model.movePiece(aiMove.startRow, aiMove.startCol, aiMove.endRow, aiMove.endCol, promotion);
+                        view.clearArrows();
+                        view.repaint();
+                        checkAndPlayAI(); // Loop in case AI plays itself? Mostly just to end
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    public void showStartupDialogs(JFrame frame) {
+        String[] modes = {"Single Player", "Two Player"};
+        int modeChoice = javax.swing.JOptionPane.showOptionDialog(frame, "Select Game Mode", "Game Mode", 
+                javax.swing.JOptionPane.DEFAULT_OPTION, javax.swing.JOptionPane.QUESTION_MESSAGE, null, modes, modes[0]);
+        
+        if (modeChoice == 0) {
+            isSinglePlayer = true;
+            String[] colors = {"White", "Black", "Random"};
+            int colorChoice = javax.swing.JOptionPane.showOptionDialog(frame, "Choose your color", "Single Player", 
+                    javax.swing.JOptionPane.DEFAULT_OPTION, javax.swing.JOptionPane.QUESTION_MESSAGE, null, colors, colors[0]);
+            
+            if (colorChoice == 1) {
+                humanColor = ChessModel.PlayerColor.BLACK;
+            } else if (colorChoice == 2) {
+                humanColor = Math.random() < 0.5 ? ChessModel.PlayerColor.WHITE : ChessModel.PlayerColor.BLACK;
+            } else {
+                humanColor = ChessModel.PlayerColor.WHITE;
+            }
+        }
+        
+        if (humanColor == ChessModel.PlayerColor.BLACK) {
+            view.setFlipped(true);
+        }
+        
+        checkAndPlayAI();
+    }
+
     public static void main(String[] args) {
         // Ensure GUI creation is done on the Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
@@ -194,6 +264,9 @@ public class ChessController {
             frame.pack();
             frame.setLocationRelativeTo(null); // Center on screen
             frame.setVisible(true);
+            
+            // Show prompts after the window is visible
+            controller.showStartupDialogs(frame);
         });
     }
 }

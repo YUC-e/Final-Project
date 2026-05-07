@@ -411,22 +411,41 @@ public class ChessModel {
         }
 
         Piece piece = board[startRow][startCol];
+        Piece targetPiece = board[endRow][endCol];
         
-        // Build notation string
-        String moveStr = getPieceSymbolForNotation(piece.getType()) + " " + 
-                         (char)('a' + startCol) + (8 - startRow) + "-" + 
-                         (char)('a' + endCol) + (8 - endRow);
-                         
+        // Build algebraic notation string
+        boolean isCapture = (targetPiece != null) || 
+                            (piece.getType() == PieceType.PAWN && startCol != endCol && targetPiece == null);
+                            
+        char startFile = (char)('a' + startCol);
+        char endFile = (char)('a' + endCol);
+        int endRank = 8 - endRow;
+
+        String moveStr = getPieceSymbolForNotation(piece.getType()) + " ";
+        
         if (piece.getType() == PieceType.KING && Math.abs(startCol - endCol) == 2) {
-            moveStr = (endCol > startCol) ? "O-O" : "O-O-O";
+            moveStr += (endCol > startCol) ? "O-O" : "O-O-O";
+        } else {
+            if (piece.getType() == PieceType.PAWN) {
+                if (isCapture) {
+                    moveStr += startFile + "x" + endFile + endRank;
+                } else {
+                    moveStr += "" + endFile + endRank;
+                }
+            } else {
+                if (isCapture) {
+                    moveStr += "x" + endFile + endRank;
+                } else {
+                    moveStr += "" + endFile + endRank;
+                }
+            }
         }
+        
         if (promotion != null) {
             moveStr += "=" + getPieceSymbolForNotation(promotion);
         }
         
         moveHistory.add(moveStr);
-
-        Piece targetPiece = board[endRow][endCol];
         
         // Handle normal captures
         if (targetPiece != null) {
@@ -522,5 +541,154 @@ public class ChessModel {
             case PAWN: return "\u265F";
             default: return "";
         }
+    }
+
+    // --- AI Methods ---
+
+    public ChessModel copy() {
+        ChessModel copy = new ChessModel();
+        copy.currentTurn = this.currentTurn;
+        copy.isGameOver = this.isGameOver;
+        
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = this.board[r][c];
+                if (p != null) {
+                    Piece pCopy = new Piece(p.getType(), p.getColor());
+                    pCopy.setHasMoved(p.hasMoved());
+                    copy.board[r][c] = pCopy;
+                } else {
+                    copy.board[r][c] = null;
+                }
+            }
+        }
+        
+        if (this.lastMove != null) {
+            Piece p = this.lastMove.movedPiece;
+            Piece lmPiece = new Piece(p.getType(), p.getColor());
+            lmPiece.setHasMoved(p.hasMoved());
+            copy.lastMove = new Move(this.lastMove.startRow, this.lastMove.startCol, 
+                                     this.lastMove.endRow, this.lastMove.endCol, lmPiece);
+        }
+        
+        return copy;
+    }
+
+    public double evaluateBoard(PlayerColor color) {
+        double score = 0;
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board[r][c];
+                if (p != null) {
+                    double value = 0;
+                    switch (p.getType()) {
+                        case PAWN: value = 1.0; break;
+                        case KNIGHT: value = 3.0; break;
+                        case BISHOP: value = 3.5; break;
+                        case ROOK: value = 5.0; break;
+                        case QUEEN: value = 9.0; break;
+                        case KING: value = 900.0; break;
+                    }
+                    if (p.getColor() == color) {
+                        score += value;
+                    } else {
+                        score -= value;
+                    }
+                }
+            }
+        }
+        return score;
+    }
+
+    public List<Move> getAllValidMoves(PlayerColor color) {
+        List<Move> validMoves = new ArrayList<>();
+        for (int startRow = 0; startRow < 8; startRow++) {
+            for (int startCol = 0; startCol < 8; startCol++) {
+                Piece p = board[startRow][startCol];
+                if (p != null && p.getColor() == color) {
+                    for (int endRow = 0; endRow < 8; endRow++) {
+                        for (int endCol = 0; endCol < 8; endCol++) {
+                            if (isValidMove(startRow, startCol, endRow, endCol)) {
+                                validMoves.add(new Move(startRow, startCol, endRow, endCol, p));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return validMoves;
+    }
+
+    private double minimax(ChessModel state, int depth, double alpha, double beta, boolean isMaximizingPlayer, PlayerColor aiColor) {
+        if (depth == 0 || state.isGameOver()) {
+            return state.evaluateBoard(aiColor);
+        }
+
+        PlayerColor currentPlayer = state.getCurrentTurn();
+        List<Move> moves = state.getAllValidMoves(currentPlayer);
+
+        if (moves.isEmpty()) {
+            if (state.isInCheck(currentPlayer)) {
+                return isMaximizingPlayer ? -9999.0 : 9999.0; // Checkmate
+            } else {
+                return 0.0; // Stalemate
+            }
+        }
+
+        if (isMaximizingPlayer) {
+            double maxEval = Double.NEGATIVE_INFINITY;
+            for (Move move : moves) {
+                ChessModel nextState = state.copy();
+                PieceType promotion = (move.movedPiece.getType() == PieceType.PAWN && (move.endRow == 0 || move.endRow == 7)) ? PieceType.QUEEN : null;
+                nextState.movePiece(move.startRow, move.startCol, move.endRow, move.endCol, promotion);
+                
+                double eval = minimax(nextState, depth - 1, alpha, beta, false, aiColor);
+                maxEval = Math.max(maxEval, eval);
+                alpha = Math.max(alpha, eval);
+                if (beta <= alpha) break;
+            }
+            return maxEval;
+        } else {
+            double minEval = Double.POSITIVE_INFINITY;
+            for (Move move : moves) {
+                ChessModel nextState = state.copy();
+                PieceType promotion = (move.movedPiece.getType() == PieceType.PAWN && (move.endRow == 0 || move.endRow == 7)) ? PieceType.QUEEN : null;
+                nextState.movePiece(move.startRow, move.startCol, move.endRow, move.endCol, promotion);
+                
+                double eval = minimax(nextState, depth - 1, alpha, beta, true, aiColor);
+                minEval = Math.min(minEval, eval);
+                beta = Math.min(beta, eval);
+                if (beta <= alpha) break;
+            }
+            return minEval;
+        }
+    }
+
+    public Move calculateAIMove(PlayerColor aiColor) {
+        List<Move> moves = getAllValidMoves(aiColor);
+        if (moves.isEmpty()) return null;
+
+        Move bestMove = null;
+        double bestValue = Double.NEGATIVE_INFINITY;
+
+        for (Move move : moves) {
+            ChessModel nextState = this.copy();
+            PieceType promotion = (move.movedPiece.getType() == PieceType.PAWN && (move.endRow == 0 || move.endRow == 7)) ? PieceType.QUEEN : null;
+            nextState.movePiece(move.startRow, move.startCol, move.endRow, move.endCol, promotion);
+            
+            // Next is minimizing player (depth 2 for total depth 3 search)
+            double boardValue = minimax(nextState, 2, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false, aiColor);
+            
+            if (boardValue > bestValue) {
+                bestValue = boardValue;
+                bestMove = move;
+            }
+        }
+        
+        if (bestMove == null && !moves.isEmpty()) {
+            bestMove = moves.get((int) (Math.random() * moves.size()));
+        }
+        
+        return bestMove;
     }
 }

@@ -24,6 +24,7 @@ public class ChessView extends JPanel {
     // UI state that does not belong in the model
     private int selectedRow = -1;
     private int selectedCol = -1;
+    private boolean isFlipped = false;
 
     public static class Arrow {
         int startRow, startCol, endRow, endCol;
@@ -45,6 +46,11 @@ public class ChessView extends JPanel {
     public void setSelectedSquare(int row, int col) {
         this.selectedRow = row;
         this.selectedCol = col;
+    }
+
+    public void setFlipped(boolean flipped) {
+        this.isFlipped = flipped;
+        repaint();
     }
 
     public void addArrow(int startRow, int startCol, int endRow, int endCol) {
@@ -86,6 +92,12 @@ public class ChessView extends JPanel {
 
         int col = (x - offsetX) / squareSize;
         int row = (y - offsetY) / squareSize;
+        
+        if (isFlipped) {
+            col = 7 - col;
+            row = 7 - row;
+        }
+        
         return new int[]{row, col};
     }
 
@@ -124,12 +136,15 @@ public class ChessView extends JPanel {
         // Draw the 8x8 board and pieces
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
+                int displayRow = isFlipped ? 7 - row : row;
+                int displayCol = isFlipped ? 7 - col : col;
+
                 // Calculate square color
                 boolean isLightSquare = (row + col) % 2 == 0;
                 g2d.setColor(isLightSquare ? LIGHT_SQUARE : DARK_SQUARE);
                 
-                int x = offsetX + col * squareSize;
-                int y = offsetY + row * squareSize;
+                int x = offsetX + displayCol * squareSize;
+                int y = offsetY + displayRow * squareSize;
                 g2d.fillRect(x, y, squareSize, squareSize);
 
                 // Highlight selected square
@@ -143,8 +158,8 @@ public class ChessView extends JPanel {
                 FontMetrics fmCoords = g2d.getFontMetrics();
                 int padding = Math.max(2, squareSize / 20);
 
-                // Draw numbers (ranks) on the first column (col == 0)
-                if (col == 0) {
+                // Draw numbers (ranks) on the first column of the display
+                if (displayCol == 0) {
                     String rankText = String.valueOf(8 - row);
                     g2d.setColor(isLightSquare ? DARK_SQUARE : LIGHT_SQUARE);
                     int textX = x + padding;
@@ -152,8 +167,8 @@ public class ChessView extends JPanel {
                     g2d.drawString(rankText, textX, textY);
                 }
 
-                // Draw letters (files) on the last row (row == 7)
-                if (row == 7) {
+                // Draw letters (files) on the last row of the display
+                if (displayRow == 7) {
                     String fileText = String.valueOf((char) ('a' + col));
                     g2d.setColor(isLightSquare ? DARK_SQUARE : LIGHT_SQUARE);
                     int textX = x + squareSize - fmCoords.stringWidth(fileText) - padding;
@@ -217,10 +232,15 @@ public class ChessView extends JPanel {
     private void drawArrow(Graphics2D g2d, Arrow arrow, int squareSize, int offsetX, int offsetY) {
         g2d.setColor(new Color(255, 170, 0, 180)); // Orange-ish with transparency
         
-        int startX = offsetX + arrow.startCol * squareSize + squareSize / 2;
-        int startY = offsetY + arrow.startRow * squareSize + squareSize / 2;
-        int endX = offsetX + arrow.endCol * squareSize + squareSize / 2;
-        int endY = offsetY + arrow.endRow * squareSize + squareSize / 2;
+        int displayStartCol = isFlipped ? 7 - arrow.startCol : arrow.startCol;
+        int displayStartRow = isFlipped ? 7 - arrow.startRow : arrow.startRow;
+        int displayEndCol = isFlipped ? 7 - arrow.endCol : arrow.endCol;
+        int displayEndRow = isFlipped ? 7 - arrow.endRow : arrow.endRow;
+
+        int startX = offsetX + displayStartCol * squareSize + squareSize / 2;
+        int startY = offsetY + displayStartRow * squareSize + squareSize / 2;
+        int endX = offsetX + displayEndCol * squareSize + squareSize / 2;
+        int endY = offsetY + displayEndRow * squareSize + squareSize / 2;
 
         // If dragging in the same square, don't draw an arrow
         if (startX == endX && startY == endY) return;
