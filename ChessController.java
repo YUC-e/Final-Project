@@ -190,7 +190,7 @@ public class ChessController {
             frame.add(view);
             
             // Set an initial size so it opens a visible blank window
-            frame.setPreferredSize(new Dimension(1000, 800));
+            frame.setPreferredSize(new Dimension(1200, 800));
             frame.pack();
             frame.setLocationRelativeTo(null); // Center on screen
             frame.setVisible(true);

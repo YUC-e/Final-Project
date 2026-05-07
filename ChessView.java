@@ -72,7 +72,8 @@ public class ChessView extends JPanel {
         int width = getWidth();
         int height = getHeight();
         int leftPanelWidth = 200;
-        int availableWidth = Math.max(0, width - leftPanelWidth);
+        int rightPanelWidth = 200;
+        int availableWidth = Math.max(0, width - leftPanelWidth - rightPanelWidth);
         int boardSize = Math.min(availableWidth, height);
         int squareSize = boardSize / 8;
 
@@ -103,7 +104,8 @@ public class ChessView extends JPanel {
         int width = getWidth();
         int height = getHeight();
         int leftPanelWidth = 200;
-        int availableWidth = Math.max(0, width - leftPanelWidth);
+        int rightPanelWidth = 200;
+        int availableWidth = Math.max(0, width - leftPanelWidth - rightPanelWidth);
 
         // Calculate the size of each square to fit the remaining panel while maintaining a square aspect ratio
         int boardSize = Math.min(availableWidth, height);
@@ -113,8 +115,11 @@ public class ChessView extends JPanel {
         int offsetX = leftPanelWidth + (availableWidth - boardSize) / 2;
         int offsetY = (height - boardSize) / 2;
         
-        // Draw Captured Pieces Panel
-        drawCapturedPieces(g2d, leftPanelWidth, height);
+        // Draw Captured Pieces Panel aligned with the left edge of the board
+        drawCapturedPieces(g2d, offsetX - leftPanelWidth, offsetY, leftPanelWidth, boardSize);
+
+        // Draw Move History Panel aligned with the right edge of the board
+        drawMoveHistory(g2d, offsetX + boardSize, offsetY, rightPanelWidth, boardSize);
 
         // Draw the 8x8 board and pieces
         for (int row = 0; row < 8; row++) {
@@ -282,10 +287,10 @@ public class ChessView extends JPanel {
         }
     }
 
-    private void drawCapturedPieces(Graphics2D g2d, int panelWidth, int panelHeight) {
+    private void drawCapturedPieces(Graphics2D g2d, int panelX, int panelY, int panelWidth, int panelHeight) {
         // Draw background for the panel
-        g2d.setColor(new Color(40, 40, 40)); // Dark panel background
-        g2d.fillRect(0, 0, panelWidth, panelHeight);
+        g2d.setColor(new Color(130, 130, 130)); // Lighter grey panel background
+        g2d.fillRect(panelX, panelY, panelWidth, panelHeight);
 
         List<ChessModel.Piece> capturedWhite = new ArrayList<>(model.getCapturedWhitePieces());
         List<ChessModel.Piece> capturedBlack = new ArrayList<>(model.getCapturedBlackPieces());
@@ -297,8 +302,8 @@ public class ChessView extends JPanel {
         int pieceSize = 36; // Fixed size for captured pieces
         
         // Draw White captured pieces
-        int startX = 15;
-        int startY = 60;
+        int startX = panelX + 15;
+        int startY = panelY + 60;
         int x = startX;
         int y = startY;
 
@@ -311,7 +316,7 @@ public class ChessView extends JPanel {
             String symbol = getPieceSymbol(p);
             g2d.drawString(symbol, x, y);
             x += pieceSize - 5; // Slight overlap for neat grouping
-            if (x + pieceSize > panelWidth) {
+            if (x + pieceSize > panelX + panelWidth) {
                 x = startX;
                 y += pieceSize + 5;
             }
@@ -319,7 +324,7 @@ public class ChessView extends JPanel {
 
         // Draw Black captured pieces
         x = startX;
-        y = panelHeight / 2 + 60;
+        y = panelY + panelHeight / 2 + 60;
 
         g2d.setColor(Color.WHITE); // label is white
         g2d.setFont(new Font("SansSerif", Font.BOLD, 18));
@@ -331,10 +336,60 @@ public class ChessView extends JPanel {
             String symbol = getPieceSymbol(p);
             g2d.drawString(symbol, x, y);
             x += pieceSize - 5;
-            if (x + pieceSize > panelWidth) {
+            if (x + pieceSize > panelX + panelWidth) {
                 x = startX;
                 y += pieceSize + 5;
             }
+        }
+    }
+
+    private void drawMoveHistory(Graphics2D g2d, int panelX, int panelY, int panelWidth, int panelHeight) {
+        // Draw background for the panel
+        g2d.setColor(new Color(130, 130, 130)); // Match captured pieces panel color
+        g2d.fillRect(panelX, panelY, panelWidth, panelHeight);
+
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("SansSerif", Font.BOLD, 18));
+        g2d.drawString("Move History", panelX + 15, panelY + 30);
+
+        List<String> history = model.getMoveHistory();
+        if (history == null || history.isEmpty()) return;
+
+        int fontSize = 14;
+        g2d.setFont(new Font("SansSerif", Font.PLAIN, fontSize));
+        
+        int rowHeight = fontSize + 10;
+        int maxRows = (panelHeight - 60) / rowHeight; // Leave room for title and padding
+        
+        // Calculate how many turns we have (1 turn = 1 white move + 1 black move)
+        int totalTurns = (history.size() + 1) / 2;
+        
+        // Determine starting turn to draw (scroll logic)
+        int startTurn = Math.max(0, totalTurns - maxRows);
+
+        int drawY = panelY + 60;
+        
+        for (int turn = startTurn; turn < totalTurns; turn++) {
+            int whiteMoveIndex = turn * 2;
+            int blackMoveIndex = turn * 2 + 1;
+
+            String turnNumber = (turn + 1) + ".";
+            String whiteMove = history.get(whiteMoveIndex);
+            String blackMove = (blackMoveIndex < history.size()) ? history.get(blackMoveIndex) : "";
+
+            // Draw Turn Number
+            g2d.setColor(new Color(220, 220, 220)); // Lighter text for numbers
+            g2d.drawString(turnNumber, panelX + 10, drawY);
+
+            // Draw White Move
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(whiteMove, panelX + 40, drawY);
+
+            // Draw Black Move
+            g2d.setColor(Color.BLACK);
+            g2d.drawString(blackMove, panelX + 120, drawY);
+
+            drawY += rowHeight;
         }
     }
 

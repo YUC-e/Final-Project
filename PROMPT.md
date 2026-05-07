@@ -35,3 +35,7 @@ In ChessView.java. Now add the ability to see which pieces have been captured. D
 
      // I had to follow up this prompt since the AI wanted to shrink the board to make room for the captured pieces panel. I instructed the AI to just increase the size of the window to make room for the captured pieces panel.
 
+Prompt:
+Now in ChessView.java. Implement a move history on the right side of the window. Attach this panel to the side of the board similar to the captured pieces panel. 
+
+Prompt:

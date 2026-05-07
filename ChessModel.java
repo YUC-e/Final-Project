@@ -63,6 +63,7 @@ public class ChessModel {
     private boolean isGameOver;
     private List<Piece> capturedWhitePieces;
     private List<Piece> capturedBlackPieces;
+    private List<String> moveHistory;
 
     public ChessModel() {
         board = new Piece[8][8];
@@ -71,6 +72,7 @@ public class ChessModel {
         isGameOver = false;
         capturedWhitePieces = new ArrayList<>();
         capturedBlackPieces = new ArrayList<>();
+        moveHistory = new ArrayList<>();
         initializeBoard();
     }
 
@@ -409,6 +411,21 @@ public class ChessModel {
         }
 
         Piece piece = board[startRow][startCol];
+        
+        // Build notation string
+        String moveStr = getPieceSymbolForNotation(piece.getType()) + " " + 
+                         (char)('a' + startCol) + (8 - startRow) + "-" + 
+                         (char)('a' + endCol) + (8 - endRow);
+                         
+        if (piece.getType() == PieceType.KING && Math.abs(startCol - endCol) == 2) {
+            moveStr = (endCol > startCol) ? "O-O" : "O-O-O";
+        }
+        if (promotion != null) {
+            moveStr += "=" + getPieceSymbolForNotation(promotion);
+        }
+        
+        moveHistory.add(moveStr);
+
         Piece targetPiece = board[endRow][endCol];
         
         // Handle normal captures
@@ -489,5 +506,21 @@ public class ChessModel {
 
     public List<Piece> getCapturedBlackPieces() {
         return capturedBlackPieces;
+    }
+
+    public List<String> getMoveHistory() {
+        return moveHistory;
+    }
+
+    private String getPieceSymbolForNotation(PieceType type) {
+        switch (type) {
+            case KING: return "\u265A";
+            case QUEEN: return "\u265B";
+            case ROOK: return "\u265C";
+            case BISHOP: return "\u265D";
+            case KNIGHT: return "\u265E";
+            case PAWN: return "\u265F";
+            default: return "";
+        }
     }
 }
